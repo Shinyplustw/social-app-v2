@@ -41,7 +41,11 @@
     }
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text);min-height:100vh;}/* APP SHELL */
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text);min-height:100vh;}
+
+  
+
+  /* APP SHELL */
   .app-wrap{display:none;min-height:100vh;flex-direction:column;}
   .app-wrap.visible{display:flex;}
   .header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:10;}
@@ -161,22 +165,6 @@
 </style>
 </head>
 <body>
-      <div>
-        <div class="gate-logo-text">社群後台</div>
-        <div class="gate-logo-sub">AI 文案生成工具 · Beta</div>
-      </div>
-    </div>
-    <div class="gate-title">輸入你的 API Key 開始使用</div>
-    <div class="gate-desc">這個工具使用 Claude API 生成社群文案。你的 API Key 只存在瀏覽器本地，不會上傳到任何伺服器。</div>
-    <label class="gate-label">Anthropic API Key</label>
-    <input class="gate-input" id="api-key-input" type="password" placeholder="sk-ant-api03-..."/>
-    <button class="gate-btn" onclick="startApp()">進入工具</button>
-    <div class="gate-note">
-      還沒有 API Key？<a href="https://console.anthropic.com" target="_blank">前往 Anthropic Console 取得</a>。<br/>
-      本工具為測試版，文案生成會消耗少量 API 額度（每次約 $0.003 USD）。
-    </div>
-  </div>
-</div>
 
 <!-- APP -->
 <div class="app-wrap visible" id="app">
@@ -386,7 +374,25 @@
 let mode='brand', drafts=[], genCount=0, dFilter='all', prevP='ig';
 let tones={brand:'輕鬆活潑', artist:'詩意敘事'};
 let results={};
+
+
+  apiKey=k;
+  localStorage.setItem('sm_key',k);
+  
+  document.getElementById('app').classList.add('visible');
 }
+
+
+}
+
+
+  if(saved&&saved.startsWith('sk-ant')){
+    apiKey=saved;
+    
+    document.getElementById('app').classList.add('visible');
+  }
+});
+
 function setMode(m){
   mode=m;
   document.getElementById('mb-brand').classList.toggle('active',m==='brand');
