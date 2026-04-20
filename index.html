@@ -375,24 +375,6 @@ let mode='brand', drafts=[], genCount=0, dFilter='all', prevP='ig';
 let tones={brand:'輕鬆活潑', artist:'詩意敘事'};
 let results={};
 
-
-  apiKey=k;
-  localStorage.setItem('sm_key',k);
-  
-  document.getElementById('app').classList.add('visible');
-}
-
-
-}
-
-
-  if(saved&&saved.startsWith('sk-ant')){
-    apiKey=saved;
-    
-    document.getElementById('app').classList.add('visible');
-  }
-});
-
 function setMode(m){
   mode=m;
   document.getElementById('mb-brand').classList.toggle('active',m==='brand');
@@ -570,6 +552,7 @@ function renderPrev(){
     </div>`;
   }
 }
+
 </script>
 </body>
 </html>
