@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>社群後台 — AI 文案生成工具</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f7f7f5;
+    --bg3: #f0efeb;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.22);
+    --text: #1a1a18;
+    --text2: #6b6b68;
+    --text3: #a0a09c;
+    --brand: #185FA5;
+    --brand-bg: #E6F1FB;
+    --brand-text: #0C447C;
+    --artist: #534AB7;
+    --artist-bg: #EEEDFE;
+    --artist-text: #3C3489;
+    --accent: #BA7517;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg2: #252523;
+      --bg3: #2e2e2b;
+      --border: rgba(255,255,255,0.1);
+      --border2: rgba(255,255,255,0.2);
+      --text: #f0efe8;
+      --text2: #a0a09c;
+      --text3: #6b6b68;
+      --brand-bg: #0c2d4a;
+      --brand-text: #85B7EB;
+      --artist-bg: #26215c;
+      --artist-text: #AFA9EC;
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text);min-height:100vh;}/* APP SHELL */
+  .app-wrap{display:none;min-height:100vh;flex-direction:column;}
+  .app-wrap.visible{display:flex;}
+  .header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:10;}
+  .header-left{display:flex;align-items:center;gap:12px;}
+  .header-icon{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--brand),var(--artist));display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;}
+  .header-title{font-size:14px;font-weight:600;}
+  .header-sub{font-size:12px;color:var(--text3);}
+  .mode-toggle{display:flex;border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .mode-btn{padding:6px 14px;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;transition:all 0.15s;color:var(--text2);background:var(--bg);}
+  .mode-btn.brand.active{background:var(--brand);color:white;}
+  .mode-btn.artist.active{background:var(--artist);color:white;}
+  .header-right{display:flex;align-items:center;gap:10px;}
+  .key-badge{font-size:11px;color:var(--text3);padding:4px 9px;border:0.5px solid var(--border);border-radius:100px;cursor:pointer;transition:all 0.15s;}
+  .key-badge:hover{border-color:var(--border2);color:var(--text2);}
+
+  /* LAYOUT */
+  .body{display:grid;grid-template-columns:200px 1fr;flex:1;overflow:hidden;}
+  @media(max-width:640px){.body{grid-template-columns:1fr;}}
+  .sidebar{background:var(--bg);border-right:0.5px solid var(--border);padding:1rem 0;display:flex;flex-direction:column;gap:2px;}
+  @media(max-width:640px){.sidebar{display:none;}}
+  .nav-sec{font-size:10px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);padding:8px 1rem 4px;}
+  .nav-item{display:flex;align-items:center;gap:9px;padding:8px 1rem;font-size:13px;cursor:pointer;color:var(--text2);border-radius:var(--radius);margin:0 8px;transition:all 0.12s;}
+  .nav-item:hover{background:var(--bg2);color:var(--text);}
+  .nav-item.active{background:var(--bg2);color:var(--text);font-weight:600;}
+  .nav-pip{width:5px;height:5px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background 0.15s;}
+  .sb-stats{margin-top:auto;padding:1rem;border-top:0.5px solid var(--border);display:flex;gap:8px;}
+  .sb-stat{flex:1;padding:8px 10px;background:var(--bg2);border-radius:var(--radius);border:0.5px solid var(--border);}
+  .sb-stat-n{font-size:18px;font-weight:700;color:var(--text);}
+  .sb-stat-l{font-size:10px;color:var(--text3);}
+
+  /* MAIN */
+  .main{overflow-y:auto;padding:1.5rem;}
+  .panel{display:none;max-width:720px;}
+  .panel.active{display:block;}
+
+  /* FORM */
+  .card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem;}
+  .card-title{font-size:13px;font-weight:600;margin-bottom:1rem;color:var(--text);}
+  .sub-tabs{display:flex;border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1.25rem;}
+  .sub-tab{flex:1;padding:8px 10px;font-size:12px;font-weight:600;text-align:center;cursor:pointer;border:none;font-family:inherit;transition:all 0.12s;color:var(--text2);background:var(--bg2);border-right:0.5px solid var(--border);}
+  .sub-tab:last-child{border-right:none;}
+  .sub-tab.active{background:var(--bg);color:var(--text);}
+  .sub-panel{display:none;}.sub-panel.active{display:block;}
+  .fg{margin-bottom:1rem;}
+  .fl{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:0.06em;}
+  .fi,.fta,.fsel{width:100%;padding:8px 10px;font-size:13px;font-family:inherit;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none;transition:border-color 0.15s;}
+  .fi:focus,.fta:focus,.fsel:focus{border-color:var(--border2);}
+  .fta{resize:vertical;min-height:80px;line-height:1.6;}
+  .r2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media(max-width:480px){.r2{grid-template-columns:1fr;}}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;}
+  .tag{padding:5px 11px;border-radius:100px;border:0.5px solid var(--border);background:var(--bg2);font-size:12px;cursor:pointer;color:var(--text2);font-family:inherit;transition:all 0.12s;}
+  .tag:hover{border-color:var(--border2);color:var(--text);}
+  .tag.sel-brand{border-color:var(--brand);color:var(--brand);background:var(--brand-bg);}
+  .tag.sel-artist{border-color:var(--artist);color:var(--artist);background:var(--artist-bg);}
+  .hint{font-size:12px;color:var(--text3);padding:8px 12px;border-radius:var(--radius);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:1rem;line-height:1.55;}
+
+  /* BUTTON */
+  .gen-btn{width:100%;padding:11px;border-radius:var(--radius);border:none;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s;color:white;margin-top:4px;}
+  .gen-btn.b{background:var(--brand);}.gen-btn.b:hover{background:var(--brand-text);}
+  .gen-btn.a{background:var(--artist);}.gen-btn.a:hover{background:var(--artist-text);}
+  .gen-btn:disabled{background:var(--bg3);color:var(--text3);cursor:not-allowed;}
+
+  /* RESULT */
+  .result-box{margin-top:1rem;border:0.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;display:none;}
+  .result-box.show{display:block;}
+  .result-hd{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg2);border-bottom:0.5px solid var(--border);}
+  .result-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);}
+  .result-acts{display:flex;gap:6px;}
+  .act-btn{padding:4px 10px;font-size:11px;border-radius:var(--radius);border:0.5px solid var(--border);background:var(--bg);cursor:pointer;font-family:inherit;color:var(--text2);transition:all 0.12s;}
+  .act-btn:hover{color:var(--text);border-color:var(--border2);}
+  .act-btn.sb{border-color:var(--brand);color:var(--brand);}.act-btn.sb:hover{background:var(--brand-bg);}
+  .act-btn.sa{border-color:var(--artist);color:var(--artist);}.act-btn.sa:hover{background:var(--artist-bg);}
+  .result-body{padding:14px;}
+  .result-text{font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap;}
+  .ld{display:flex;gap:5px;align-items:center;padding:4px 0 8px;}
+  .ld-dot{width:6px;height:6px;border-radius:50%;animation:bonce 1.2s infinite;}
+  .ld-dot:nth-child(2){animation-delay:0.2s;}.ld-dot:nth-child(3){animation-delay:0.4s;}
+  .ld-dot.b{background:var(--brand);}.ld-dot.a{background:var(--artist);}
+  @keyframes bonce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
+
+  /* DRAFTS */
+  .filter-row{display:flex;gap:6px;margin-bottom:1rem;}
+  .f-btn{padding:5px 12px;border-radius:100px;border:0.5px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2);transition:all 0.12s;}
+  .f-btn.active{background:var(--bg2);color:var(--text);font-weight:600;border-color:var(--border2);}
+  .draft-list{display:flex;flex-direction:column;gap:10px;}
+  .draft-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;transition:border-color 0.12s;}
+  .draft-card:hover{border-color:var(--border2);}
+  .draft-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+  .draft-title{font-size:13px;font-weight:600;color:var(--text);}
+  .draft-meta{font-size:11px;color:var(--text3);margin-bottom:8px;}
+  .draft-preview{font-size:12px;line-height:1.55;color:var(--text2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:10px;}
+  .draft-foot{display:flex;gap:6px;align-items:center;}
+  .mode-pill{font-size:10px;padding:2px 8px;border-radius:100px;margin-left:auto;font-weight:600;}
+  .mode-pill.brand{background:var(--brand-bg);color:var(--brand);}
+  .mode-pill.artist{background:var(--artist-bg);color:var(--artist);}
+  .empty{text-align:center;padding:4rem 1rem;color:var(--text3);font-size:13px;}
+
+  /* PREVIEW */
+  .prev-header{display:flex;gap:8px;margin-bottom:1rem;align-items:center;flex-wrap:wrap;}
+  .prev-tabs{display:flex;gap:6px;}
+  .prev-tab{padding:6px 14px;border-radius:var(--radius);border:0.5px solid var(--border);background:var(--bg);font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2);transition:all 0.12s;}
+  .prev-tab.active{background:var(--bg2);color:var(--text);font-weight:600;border-color:var(--border2);}
+  .prev-frame{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;max-width:360px;}
+  .pf-top{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:0.5px solid var(--border);}
+  .pf-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;}
+  .pf-av.b{background:var(--brand);}
+  .pf-av.a{background:linear-gradient(135deg,var(--artist),#E1306C);}
+  .pf-name{font-size:13px;font-weight:600;color:var(--text);}
+  .pf-handle{font-size:11px;color:var(--text3);}
+  .pf-img{width:100%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3);}
+  .pf-actions{padding:10px 14px;display:flex;gap:14px;}
+  .pf-ico{width:20px;height:20px;opacity:0.45;}
+  .pf-likes{padding:0 14px 4px;font-size:12px;font-weight:600;color:var(--text);}
+  .pf-caption{padding:0 14px 14px;font-size:13px;line-height:1.6;color:var(--text);}
+  .pf-stats{padding:8px 14px;font-size:11px;color:var(--text3);border-top:0.5px solid var(--border);display:flex;justify-content:space-between;}
+</style>
+</head>
+<body>
+      <div>
+        <div class="gate-logo-text">社群後台</div>
+        <div class="gate-logo-sub">AI 文案生成工具 · Beta</div>
+      </div>
+    </div>
+    <div class="gate-title">輸入你的 API Key 開始使用</div>
+    <div class="gate-desc">這個工具使用 Claude API 生成社群文案。你的 API Key 只存在瀏覽器本地，不會上傳到任何伺服器。</div>
+    <label class="gate-label">Anthropic API Key</label>
+    <input class="gate-input" id="api-key-input" type="password" placeholder="sk-ant-api03-..."/>
+    <button class="gate-btn" onclick="startApp()">進入工具</button>
+    <div class="gate-note">
+      還沒有 API Key？<a href="https://console.anthropic.com" target="_blank">前往 Anthropic Console 取得</a>。<br/>
+      本工具為測試版，文案生成會消耗少量 API 額度（每次約 $0.003 USD）。
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app-wrap visible" id="app">
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">S</div>
+      <div>
+        <div class="header-title">社群後台</div>
+      </div>
+      <div style="width:1px;height:20px;background:var(--border);margin:0 4px;"></div>
+      <div class="mode-toggle">
+        <button class="mode-btn brand active" id="mb-brand" onclick="setMode('brand')">🏢 品牌</button>
+        <button class="mode-btn artist" id="mb-artist" onclick="setMode('artist')">🎨 創作者</button>
+      </div>
+    </div>
+    <div class="header-right">
+      
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sidebar">
+      <div class="nav-sec">工具</div>
+      <div class="nav-item active" onclick="switchTab('generate',this)"><span class="nav-pip" id="pip-gen"></span>文案生成</div>
+      <div class="nav-item" onclick="switchTab('drafts',this)"><span class="nav-pip" id="pip-drafts"></span>草稿管理</div>
+      <div class="nav-item" onclick="switchTab('preview',this)"><span class="nav-pip" id="pip-prev"></span>貼文預覽</div>
+      <div class="sb-stats">
+        <div class="sb-stat"><div class="sb-stat-n" id="stat-d">0</div><div class="sb-stat-l">草稿</div></div>
+        <div class="sb-stat"><div class="sb-stat-n" id="stat-g">0</div><div class="sb-stat-l">已生成</div></div>
+      </div>
+    </div>
+
+    <div class="main">
+
+      <!-- GENERATE -->
+      <div class="panel active" id="panel-generate">
+
+        <!-- BRAND -->
+        <div id="brand-panel">
+          <div class="sub-tabs">
+            <button class="sub-tab active" onclick="switchSub('b-copy',this,'brand-panel')">文案生成</button>
+            <button class="sub-tab" onclick="switchSub('b-img',this,'brand-panel')">圖片描述</button>
+          </div>
+          <div class="sub-panel active" id="b-copy">
+            <div class="card">
+              <div class="r2">
+                <div class="fg"><label class="fl">貼文主題</label><input class="fi" id="b-topic" placeholder="新品上架、活動預告..."/></div>
+                <div class="fg"><label class="fl">品牌名稱</label><input class="fi" id="b-brand" placeholder="例如：ACME Studio"/></div>
+              </div>
+              <div class="fg"><label class="fl">目標受眾</label><input class="fi" id="b-audience" placeholder="例如：25-35 歲職場女性"/></div>
+              <div class="fg">
+                <label class="fl">目標平台</label>
+                <div class="tags" id="b-plat">
+                  <button class="tag sel-brand" onclick="toggleTag(this,'brand')">Instagram</button>
+                  <button class="tag" onclick="toggleTag(this,'brand')">Facebook</button>
+                  <button class="tag" onclick="toggleTag(this,'brand')">LinkedIn</button>
+                  <button class="tag" onclick="toggleTag(this,'brand')">Discord</button>
+                </div>
+              </div>
+              <div class="fg">
+                <label class="fl">語調風格</label>
+                <div class="tags" id="b-tone-row">
+                  <button class="tag sel-brand" onclick="selTone(this,'brand')">輕鬆活潑</button>
+                  <button class="tag" onclick="selTone(this,'brand')">專業正式</button>
+                  <button class="tag" onclick="selTone(this,'brand')">溫暖感性</button>
+                  <button class="tag" onclick="selTone(this,'brand')">趣味幽默</button>
+                  <button class="tag" onclick="selTone(this,'brand')">簡潔有力</button>
+                </div>
+              </div>
+              <div class="fg"><label class="fl">補充說明（選填）</label><textarea class="fta" id="b-extra" placeholder="活動日期、產品特色、特定 CTA..."></textarea></div>
+              <button class="gen-btn b" id="btn-b-copy" onclick="gen('brand','copy')">生成品牌文案</button>
+            </div>
+            <div class="result-box" id="res-b-copy">
+              <div class="result-hd"><span class="result-lbl">文案結果</span><div class="result-acts"><button class="act-btn" onclick="gen('brand','copy')">重新生成</button><button class="act-btn sb" onclick="save('brand','copy')">儲存草稿</button></div></div>
+              <div class="result-body"><div class="ld" id="ld-b-copy" style="display:none"><div class="ld-dot b"></div><div class="ld-dot b"></div><div class="ld-dot b"></div><span style="font-size:12px;color:var(--text3);margin-left:8px">生成中...</span></div><div class="result-text" id="rt-b-copy"></div></div>
+            </div>
+          </div>
+          <div class="sub-panel" id="b-img">
+            <div class="card">
+              <div class="hint">生成給設計師或 AI 工具（Midjourney / DALL-E）使用的圖片描述與英文 prompt。</div>
+              <div class="r2">
+                <div class="fg"><label class="fl">貼文主題</label><input class="fi" id="bi-topic" placeholder="夏日新品、品牌活動..."/></div>
+                <div class="fg"><label class="fl">視覺風格</label><select class="fsel" id="bi-style"><option>現代簡潔（Minimal）</option><option>溫暖生活感（Lifestyle）</option><option>專業商業（Corporate）</option><option>活潑插畫（Illustration）</option></select></div>
+              </div>
+              <div class="r2">
+                <div class="fg"><label class="fl">平台尺寸</label><select class="fsel" id="bi-size"><option>Instagram 方形 1:1</option><option>Instagram 限動 9:16</option><option>Facebook 封面 16:9</option><option>LinkedIn 橫幅</option></select></div>
+                <div class="fg"><label class="fl">品牌色調</label><input class="fi" id="bi-color" placeholder="深藍、米白、橄欖綠..."/></div>
+              </div>
+              <button class="gen-btn b" id="btn-b-img" onclick="gen('brand','img')">生成圖片描述</button>
+            </div>
+            <div class="result-box" id="res-b-img">
+              <div class="result-hd"><span class="result-lbl">圖片描述</span><div class="result-acts"><button class="act-btn" onclick="gen('brand','img')">重新生成</button><button class="act-btn sb" onclick="save('brand','img')">儲存草稿</button></div></div>
+              <div class="result-body"><div class="ld" id="ld-b-img" style="display:none"><div class="ld-dot b"></div><div class="ld-dot b"></div><div class="ld-dot b"></div><span style="font-size:12px;color:var(--text3);margin-left:8px">生成中...</span></div><div class="result-text" id="rt-b-img"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ARTIST -->
+        <div id="artist-panel" style="display:none">
+          <div class="sub-tabs">
+            <button class="sub-tab active" onclick="switchSub('a-copy',this,'artist-panel')">作品貼文</button>
+            <button class="sub-tab" onclick="switchSub('a-wip',this,'artist-panel')">WIP 進度文</button>
+            <button class="sub-tab" onclick="switchSub('a-com',this,'artist-panel')">委託公告</button>
+          </div>
+          <div class="sub-panel active" id="a-copy">
+            <div class="card">
+              <div class="r2">
+                <div class="fg"><label class="fl">作品名稱</label><input class="fi" id="a-title" placeholder="例如：《無名之境 No.3》"/></div>
+                <div class="fg"><label class="fl">創作媒材</label><input class="fi" id="a-medium" placeholder="水彩、油畫、數位、版畫..."/></div>
+              </div>
+              <div class="fg"><label class="fl">作品情感 / 故事</label><textarea class="fta" id="a-story" placeholder="這件作品的靈感來源、創作當下的狀態、想讓觀者感受到的情緒..."></textarea></div>
+              <div class="fg">
+                <label class="fl">文案語調</label>
+                <div class="tags" id="a-tone-row">
+                  <button class="tag sel-artist" onclick="selTone(this,'artist')">詩意敘事</button>
+                  <button class="tag" onclick="selTone(this,'artist')">創作日記</button>
+                  <button class="tag" onclick="selTone(this,'artist')">藝術家自白</button>
+                  <button class="tag" onclick="selTone(this,'artist')">社群互動</button>
+                  <button class="tag" onclick="selTone(this,'artist')">簡短有力</button>
+                </div>
+              </div>
+              <div class="fg">
+                <label class="fl">發布平台</label>
+                <div class="tags" id="a-plat">
+                  <button class="tag sel-artist" onclick="toggleTag(this,'artist')">Instagram</button>
+                  <button class="tag" onclick="toggleTag(this,'artist')">Threads</button>
+                  <button class="tag" onclick="toggleTag(this,'artist')">Discord</button>
+                  <button class="tag" onclick="toggleTag(this,'artist')">X / Twitter</button>
+                </div>
+              </div>
+              <div class="r2">
+                <div class="fg"><label class="fl">販售狀態</label><select class="fsel" id="a-sale"><option>不開放販售</option><option>原作販售</option><option>印刷品販售</option><option>NFT 販售</option></select></div>
+                <div class="fg"><label class="fl">Hashtag 方向</label><select class="fsel" id="a-htag"><option>插畫 / 繪畫社群</option><option>數位藝術社群</option><option>台灣在地藝術圈</option><option>國際藝術社群</option></select></div>
+              </div>
+              <button class="gen-btn a" id="btn-a-copy" onclick="gen('artist','copy')">生成作品貼文</button>
+            </div>
+            <div class="result-box" id="res-a-copy">
+              <div class="result-hd"><span class="result-lbl">作品貼文</span><div class="result-acts"><button class="act-btn" onclick="gen('artist','copy')">重新生成</button><button class="act-btn sa" onclick="save('artist','copy')">儲存草稿</button></div></div>
+              <div class="result-body"><div class="ld" id="ld-a-copy" style="display:none"><div class="ld-dot a"></div><div class="ld-dot a"></div><div class="ld-dot a"></div><span style="font-size:12px;color:var(--text3);margin-left:8px">生成中...</span></div><div class="result-text" id="rt-a-copy"></div></div>
+            </div>
+          </div>
+          <div class="sub-panel" id="a-wip">
+            <div class="card">
+              <div class="hint">Work In Progress — 展示創作過程，增加粉絲參與感與期待。</div>
+              <div class="r2">
+                <div class="fg"><label class="fl">作品系列 / 名稱</label><input class="fi" id="aw-title" placeholder="例如：新系列《城市殘像》"/></div>
+                <div class="fg"><label class="fl">目前進度</label><select class="fsel" id="aw-stage"><option>草圖階段</option><option>打底 / 鋪色</option><option>細節刻畫中</option><option>快完成了</option><option>靈感剛爆發</option></select></div>
+              </div>
+              <div class="fg"><label class="fl">想分享的創作心境</label><textarea class="fta" id="aw-mood" placeholder="遇到什麼瓶頸？有什麼新發現？今天的創作狀態如何？"></textarea></div>
+              <button class="gen-btn a" id="btn-a-wip" onclick="gen('artist','wip')">生成 WIP 貼文</button>
+            </div>
+            <div class="result-box" id="res-a-wip">
+              <div class="result-hd"><span class="result-lbl">WIP 貼文</span><div class="result-acts"><button class="act-btn" onclick="gen('artist','wip')">重新生成</button><button class="act-btn sa" onclick="save('artist','wip')">儲存草稿</button></div></div>
+              <div class="result-body"><div class="ld" id="ld-a-wip" style="display:none"><div class="ld-dot a"></div><div class="ld-dot a"></div><div class="ld-dot a"></div><span style="font-size:12px;color:var(--text3);margin-left:8px">生成中...</span></div><div class="result-text" id="rt-a-wip"></div></div>
+            </div>
+          </div>
+          <div class="sub-panel" id="a-com">
+            <div class="card">
+              <div class="hint">自動產出開放委託公告，清楚說明類型、價格與流程。</div>
+              <div class="r2">
+                <div class="fg"><label class="fl">委託狀態</label><select class="fsel" id="ac-status"><option>現在開放委託</option><option>候補名單開放</option><option>暫停接受委託</option></select></div>
+                <div class="fg"><label class="fl">委託類型</label><input class="fi" id="ac-type" placeholder="人像插畫、寵物肖像、封面設計..."/></div>
+              </div>
+              <div class="r2">
+                <div class="fg"><label class="fl">價格範圍</label><input class="fi" id="ac-price" placeholder="例如：NT$2,000 起"/></div>
+                <div class="fg"><label class="fl">交件時間</label><input class="fi" id="ac-time" placeholder="例如：2-4 週"/></div>
+              </div>
+              <div class="fg"><label class="fl">聯絡方式</label><input class="fi" id="ac-contact" placeholder="DM、Email、表單連結..."/></div>
+              <button class="gen-btn a" id="btn-a-com" onclick="gen('artist','commission')">生成委託公告</button>
+            </div>
+            <div class="result-box" id="res-a-com">
+              <div class="result-hd"><span class="result-lbl">委託公告</span><div class="result-acts"><button class="act-btn" onclick="gen('artist','commission')">重新生成</button><button class="act-btn sa" onclick="save('artist','commission')">儲存草稿</button></div></div>
+              <div class="result-body"><div class="ld" id="ld-a-com" style="display:none"><div class="ld-dot a"></div><div class="ld-dot a"></div><div class="ld-dot a"></div><span style="font-size:12px;color:var(--text3);margin-left:8px">生成中...</span></div><div class="result-text" id="rt-a-com"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DRAFTS -->
+      <div class="panel" id="panel-drafts">
+        <div class="filter-row">
+          <button class="f-btn active" onclick="filterD('all',this)">全部</button>
+          <button class="f-btn" onclick="filterD('brand',this)">品牌</button>
+          <button class="f-btn" onclick="filterD('artist',this)">創作者</button>
+        </div>
+        <div class="empty" id="empty-msg">還沒有草稿，先去生成一些內容吧！</div>
+        <div class="draft-list" id="draft-list"></div>
+      </div>
+
+      <!-- PREVIEW -->
+      <div class="panel" id="panel-preview">
+        <div class="prev-header">
+          <select class="fsel" id="prev-sel" style="flex:1;max-width:280px" onchange="renderPrev()"><option value="">— 選擇草稿 —</option></select>
+          <div class="prev-tabs">
+            <button class="prev-tab active" onclick="setPrevP('ig',this)">Instagram</button>
+            <button class="prev-tab" onclick="setPrevP('fb',this)">Facebook</button>
+          </div>
+        </div>
+        <div id="prev-area"><div class="empty">選擇草稿後即可預覽貼文外觀。</div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let mode='brand', drafts=[], genCount=0, dFilter='all', prevP='ig';
+let tones={brand:'輕鬆活潑', artist:'詩意敘事'};
+let results={};
+}
+function setMode(m){
+  mode=m;
+  document.getElementById('mb-brand').classList.toggle('active',m==='brand');
+  document.getElementById('mb-artist').classList.toggle('active',m==='artist');
+  document.getElementById('brand-panel').style.display=m==='brand'?'block':'none';
+  document.getElementById('artist-panel').style.display=m==='artist'?'block':'none';
+  updatePips();
+}
+
+function updatePips(){
+  const c=mode==='brand'?'#185FA5':'#534AB7';
+  document.querySelectorAll('.nav-item.active .nav-pip').forEach(p=>p.style.background=c);
+}
+
+function switchTab(t,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  el.classList.add('active');
+  updatePips();
+  if(t==='drafts')renderDrafts();
+  if(t==='preview')renderPrevSel();
+}
+
+function switchSub(id,el,par){
+  const p=document.getElementById(par);
+  p.querySelectorAll('.sub-tab').forEach(t=>t.classList.remove('active'));
+  p.querySelectorAll('.sub-panel').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+function toggleTag(el,m){el.classList.toggle('sel-'+m);}
+function selTone(el,m){
+  el.closest('.tags').querySelectorAll('.tag').forEach(b=>{b.classList.remove('sel-brand','sel-artist');});
+  el.classList.add('sel-'+m);tones[m]=el.textContent;
+}
+function getTagsText(row){return Array.from(row.querySelectorAll('.sel-brand,.sel-artist')).map(b=>b.textContent).join('、');}
+
+async function callAPI(prompt,ldId,rtId,btnId,label){
+  const btn=document.getElementById(btnId);
+  btn.disabled=true;btn.textContent='生成中...';
+  const box=document.getElementById(rtId.replace('rt-','res-'));
+  box.classList.add('show');
+  document.getElementById(ldId).style.display='flex';
+  document.getElementById(rtId).textContent='';
+  let result='';
+  try{
+    const r=await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt})
+    });
+    const d=await r.json();
+    if(d.error)result='錯誤：'+d.error;
+    else result=d.text||'生成失敗，請重試。';
+  }catch(e){result='連線失敗，請稍後重試。('+e.message+')';}
+  document.getElementById(ldId).style.display='none';
+  document.getElementById(rtId).textContent=result;
+  btn.disabled=false;btn.textContent=label;
+  genCount++;document.getElementById('stat-g').textContent=genCount;
+  return result;
+}
+
+async function gen(m,type){
+  let prompt='',ldId='',rtId='',btnId='',label='';
+  if(m==='brand'&&type==='copy'){
+    const topic=document.getElementById('b-topic').value.trim();if(!topic){alert('請輸入貼文主題！');return;}
+    const plat=getTagsText(document.getElementById('b-plat'))||'Instagram';
+    prompt=`你是專業社群文案師。請為品牌「${document.getElementById('b-brand').value||'品牌'}」撰寫貼文：\n主題：${topic}\n平台：${plat}\n語調：${tones.brand}\n受眾：${document.getElementById('b-audience').value||'一般大眾'}\n補充：${document.getElementById('b-extra').value}\n請附 emoji 和 hashtag，多平台分別提供。繁體中文。`;
+    ldId='ld-b-copy';rtId='rt-b-copy';btnId='btn-b-copy';label='生成品牌文案';
+  } else if(m==='brand'&&type==='img'){
+    const topic=document.getElementById('bi-topic').value.trim();if(!topic){alert('請輸入主題！');return;}
+    prompt=`你是創意總監，請提供圖片視覺描述：\n主題：${topic}\n風格：${document.getElementById('bi-style').value}\n尺寸：${document.getElementById('bi-size').value}\n色調：${document.getElementById('bi-color').value||'未指定'}\n請提供：1.中文構圖描述 2.英文 AI prompt（Midjourney 風格）3.設計師注意事項。繁體中文。`;
+    ldId='ld-b-img';rtId='rt-b-img';btnId='btn-b-img';label='生成圖片描述';
+  } else if(m==='artist'&&type==='copy'){
+    const title=document.getElementById('a-title').value.trim();if(!title){alert('請輸入作品名稱！');return;}
+    const plat=getTagsText(document.getElementById('a-plat'))||'Instagram';
+    prompt=`你是藝術家的社群文案助理。請為以下作品撰寫貼文：\n作品：${title}\n媒材：${document.getElementById('a-medium').value||'未指定'}\n情感故事：${document.getElementById('a-story').value||'未說明'}\n語調：${tones.artist}\n平台：${plat}\n販售：${document.getElementById('a-sale').value}\nHashtag：${document.getElementById('a-htag').value}\n請用有溫度、有個人風格的語氣，避免過度商業化。加入藝術社群 hashtag。繁體中文。`;
+    ldId='ld-a-copy';rtId='rt-a-copy';btnId='btn-a-copy';label='生成作品貼文';
+  } else if(m==='artist'&&type==='wip'){
+    const title=document.getElementById('aw-title').value.trim();if(!title){alert('請輸入作品名稱！');return;}
+    prompt=`你是藝術家的社群助理。請撰寫 WIP 貼文：\n作品：${title}\n進度：${document.getElementById('aw-stage').value}\n心境：${document.getElementById('aw-mood').value||'未說明'}\n請用第一人稱，語氣自然，帶創作日記感，讓粉絲感受過程溫度。附 hashtag。繁體中文。`;
+    ldId='ld-a-wip';rtId='rt-a-wip';btnId='btn-a-wip';label='生成 WIP 貼文';
+  } else if(m==='artist'&&type==='commission'){
+    prompt=`請撰寫委託公告：\n狀態：${document.getElementById('ac-status').value}\n類型：${document.getElementById('ac-type').value||'插畫委託'}\n價格：${document.getElementById('ac-price').value||'洽詢'}\n交件：${document.getElementById('ac-time').value||'待確認'}\n聯絡：${document.getElementById('ac-contact').value||'私訊'}\n請撰寫清楚有溫度的公告，讓委託人了解流程，感受藝術家專業與誠意。附 hashtag。繁體中文。`;
+    ldId='ld-a-com';rtId='rt-a-com';btnId='btn-a-com';label='生成委託公告';
+  }
+  results[`${m}-${type}`]=await callAPI(prompt,ldId,rtId,btnId,label);
+}
+
+function save(m,type){
+  const r=results[`${m}-${type}`];if(!r)return;
+  const topicMap={'brand-copy':'b-topic','brand-img':'bi-topic','artist-copy':'a-title','artist-wip':'aw-title','artist-commission':'ac-type'};
+  const el=document.getElementById(topicMap[`${m}-${type}`]);
+  const topic=el?el.value.trim()||'未命名':'未命名';
+  const labels={'brand-copy':'品牌文案','brand-img':'圖片描述','artist-copy':'作品貼文','artist-wip':'WIP 貼文','artist-commission':'委託公告'};
+  drafts.unshift({id:Date.now(),mode:m,type,label:labels[`${m}-${type}`]||type,topic,text:r,date:new Date().toLocaleDateString('zh-TW')});
+  document.getElementById('stat-d').textContent=drafts.length;
+  const sbtn=document.querySelector(`#res-${m==='brand'?(type==='copy'?'b-copy':'b-img'):(type==='copy'?'a-copy':type==='wip'?'a-wip':'a-com')} .act-btn.s${m==='brand'?'b':'a'}`);
+  if(sbtn){sbtn.textContent='已儲存 ✓';setTimeout(()=>sbtn.textContent='儲存草稿',1500);}
+}
+
+function filterD(f,el){dFilter=f;document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderDrafts();}
+
+function renderDrafts(){
+  const list=document.getElementById('draft-list');
+  const empty=document.getElementById('empty-msg');
+  const fd=dFilter==='all'?drafts:drafts.filter(d=>d.mode===dFilter);
+  if(!fd.length){empty.style.display='block';list.innerHTML='';return;}
+  empty.style.display='none';
+  list.innerHTML=fd.map(d=>{
+    const ri=drafts.indexOf(d);
+    return `<div class="draft-card">
+      <div class="draft-top"><div class="draft-title">${d.topic}</div></div>
+      <div class="draft-meta">${d.label} · ${d.date}</div>
+      <div class="draft-preview">${d.text}</div>
+      <div class="draft-foot">
+        <button class="act-btn" onclick="copyDraft(${ri},this)">複製</button>
+        <button class="act-btn" onclick="goPrev(${ri})" style="color:#185FA5">預覽</button>
+        <button class="act-btn" onclick="delDraft(${ri})" style="color:#A32D2D">刪除</button>
+        <span class="mode-pill ${d.mode}">${d.mode==='brand'?'品牌':'創作者'}</span>
+      </div>
+    </div>`;}).join('');
+}
+
+function copyDraft(i,btn){navigator.clipboard.writeText(drafts[i].text).catch(()=>{});btn.textContent='已複製！';setTimeout(()=>btn.textContent='複製',1200);}
+function delDraft(i){if(confirm('確認刪除這則草稿？')){drafts.splice(i,1);document.getElementById('stat-d').textContent=drafts.length;renderDrafts();}}
+
+function goPrev(i){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.nav-item')[2].classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-preview').classList.add('active');
+  updatePips();renderPrevSel();
+  setTimeout(()=>{document.getElementById('prev-sel').value=drafts[i].id;renderPrev();},50);
+}
+
+function renderPrevSel(){
+  const sel=document.getElementById('prev-sel');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— 選擇草稿 —</option>'+drafts.map(d=>`<option value="${d.id}">[${d.mode==='brand'?'品牌':'創作者'}] ${d.topic} · ${d.label}</option>`).join('');
+  if(cur)sel.value=cur;
+  renderPrev();
+}
+
+function setPrevP(p,el){document.querySelectorAll('.prev-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');prevP=p;renderPrev();}
+
+function renderPrev(){
+  const sel=document.getElementById('prev-sel');
+  const area=document.getElementById('prev-area');
+  if(!sel.value){area.innerHTML='<div class="empty">選擇草稿後即可預覽。</div>';return;}
+  const d=drafts.find(x=>x.id==sel.value);
+  if(!d){area.innerHTML='<div class="empty">找不到草稿。</div>';return;}
+  const text=d.text.length>300?d.text.slice(0,300)+'…':d.text;
+  const init=d.topic.slice(0,2).toUpperCase();
+  const isA=d.mode==='artist';
+  if(prevP==='ig'){
+    area.innerHTML=`<div class="prev-frame">
+      <div class="pf-top"><div class="pf-av ${isA?'a':'b'}">${init}</div><div><div class="pf-name">${d.topic.slice(0,16)}</div><div class="pf-handle">${isA?'@artist_handle':'@brand_account'}</div></div></div>
+      <div class="pf-img" style="aspect-ratio:1;padding:2rem;">${isA?'🎨 作品圖片區域':'📷 品牌圖片區域'}</div>
+      <div class="pf-actions">
+        <svg class="pf-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <svg class="pf-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div class="pf-likes">${isA?'2,847':'1,203'} 個讚</div>
+      <div class="pf-caption"><strong>${d.topic.slice(0,16)}</strong> ${text}</div>
+    </div>`;
+  } else {
+    area.innerHTML=`<div class="prev-frame">
+      <div class="pf-top"><div class="pf-av ${isA?'a':'b'}" style="border-radius:6px">${init}</div><div><div class="pf-name">${d.topic.slice(0,16)} ${isA?'工作室':'粉絲專頁'}</div><div class="pf-handle">剛剛 · 🌐</div></div></div>
+      <div class="pf-caption" style="padding:10px 14px">${text}</div>
+      <div class="pf-img" style="aspect-ratio:1.91;padding:2rem">${isA?'🎨 作品橫幅':'📷 品牌圖片'}</div>
+      <div class="pf-stats"><span>👍 ❤️ ${isA?'3.1k':'1.5k'}</span><span>${isA?'412':'198'} 則留言</span></div>
+    </div>`;
+  }
+}
+</script>
+</body>
+</html>
